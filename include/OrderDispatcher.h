@@ -7,7 +7,7 @@
 #include <string>
 
 class Factory;
-`
+
 class OrderDispatcher {
   std::vector<Order> orders;
   static const std::string id;

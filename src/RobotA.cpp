@@ -1,5 +1,6 @@
 #include "../include/RobotA.h"
 #include "../include/Factory.h"
+#include "Logger.h"
 #include <chrono>
 #include <condition_variable>
 #include <mutex>

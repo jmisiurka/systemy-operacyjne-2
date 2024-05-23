@@ -1,5 +1,7 @@
 #include "../include/MillingMachine.h"
 #include "../include/Factory.h"
+#include "Logger.h"
+#include <thread>
 #include <random>
 #include <string>
 

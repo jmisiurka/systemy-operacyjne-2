@@ -3,9 +3,7 @@
 
 #include "Furnace.h"
 #include "Gear.h"
-#include "Logger.h"
 #include <string>
-#include <thread>
 
 class MillingMachine {
   Factory *factory;

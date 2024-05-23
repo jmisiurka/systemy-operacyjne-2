@@ -35,17 +35,17 @@ Order &Order::operator=(const Order &&order) {
   return *this;
 }
 
-Order::~Order() {
-  while (!ordered_gears.empty()) {
-    auto gear = ordered_gears.back();
-    delete gear;
-    ordered_gears.pop();
-  }
+// Order::~Order() {
+//   while (!ordered_gears.empty()) {
+//     auto gear = ordered_gears.back();
+//     delete gear;
+//     ordered_gears.pop();
+//   }
 
-  for (auto gear : started_gears) {
-    delete gear;
-  }
-}
+//   for (auto gear : started_gears) {
+//     delete gear;
+//   }
+// }
 
 void Order::pushGear(Gear *gear) { this->ordered_gears.push(gear); }
 

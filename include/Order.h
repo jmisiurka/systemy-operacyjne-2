@@ -18,7 +18,7 @@ public:
   Order(const Order &order);
   Order &operator=(const Order &&order);
   Order(std::queue<Gear *> ordered_gears);
-  ~Order();
+  // ~Order();
 
   void pushGear(Gear *);
   Gear *popGear();

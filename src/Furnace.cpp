@@ -1,5 +1,6 @@
-#include "../include/Furnace.h"
-#include "../include/Factory.h"
+#include "Furnace.h"
+#include "Factory.h"
+#include "Logger.h"
 #include <chrono>
 #include <random>
 #include <thread>

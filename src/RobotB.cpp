@@ -1,6 +1,7 @@
 #include "../include/RobotB.h"
 #include "../include/Factory.h"
 #include "Logger.h"
+#include <thread>
 #include <mutex>
 
 unsigned int RobotB::count = 0;

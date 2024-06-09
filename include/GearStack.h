@@ -16,10 +16,11 @@ class GearStack
 public:
     GearStack();
 
-    std::string getId();
-
-    bool empty();
-    bool full();
+    std::string getId() const;
+    int getAmount() const;
+    bool empty()const;
+    bool full()const;
+  
     Gear* pop();
     void push(Gear*);
 };

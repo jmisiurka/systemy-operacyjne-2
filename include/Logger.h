@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Display.h"
 #include <string>
-#include <iostream>
 
 class Logger {
+  static Display* display;
+
 public:
-    static void log(std::string caller_id, std::string message)
-    {
-        std::cout << "[LOG] " << caller_id << ": " << message << std::endl;
-    }
+  static void log(std::string caller_id, std::string message);
+
+  static void initDisplay(Display *factory_display);
 };

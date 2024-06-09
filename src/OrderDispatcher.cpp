@@ -4,6 +4,7 @@
 #include "Logger.h"
 #include "Order.h"
 #include <mutex>
+#include <ncurses.h>
 #include <string>
 #include <thread>
 
@@ -13,6 +14,14 @@ OrderDispatcher::OrderDispatcher(std::vector<Furnace *> &furnaces,
                                  std::vector<MillingMachine *> &machines,
                                  Factory *factory)
     : furnaces(furnaces), machines(machines), factory(factory) {}
+
+OrderDispatcher::~OrderDispatcher() {
+  std::unique_lock<std::mutex> lock(orders_mutex);
+  for (auto order : orders) {
+    order->finalize(); // to delete the gears
+    delete order;
+  }
+}
 
 void OrderDispatcher::start() {
   this->working = true;
@@ -32,13 +41,21 @@ void OrderDispatcher::incomingOrdersLoop() {
   while (working) {
 
     Order *currentOrder = nullptr;
+
+    std::unique_lock<std::mutex> orders_lock(orders_mutex);
     if (!orders.empty()) {
       // find an order to start working on
       for (int i = 0; i < orders.size(); i++) {
-        if (orders[i].gearsInQueue()) {
-          currentOrder = &orders[i];
+        if (orders[i]->gearsInQueue()) {
+          currentOrder = orders[i];
           break;
         }
+      }
+      orders_lock.unlock();
+
+      if (!this->working) {
+        // orders_lock.unlock();
+        return;
       }
 
       if (currentOrder == nullptr) {
@@ -60,9 +77,22 @@ void OrderDispatcher::incomingOrdersLoop() {
           return false;
         });
 
+        if (!this->working) {
+          lock.unlock();
+          return;
+        }
+
+        // dummy mutex and lock for waiting
+        std::mutex m;
+        std::unique_lock<std::mutex> l(m);
+        // if power is off, wait until it turns on
+        factory->power_on.wait(l,
+                               [this] { return factory->getPowerAvailable(); });
+
         for (auto furnace : furnaces) {
           if (furnace->empty()) {
             // take the gear from order and start production process
+
             furnace->startCasting(currentOrder->popGear());
 
             // if the current order is empty after starting production process,
@@ -79,23 +109,39 @@ void OrderDispatcher::incomingOrdersLoop() {
         }
       }
     }
+
+    // orders_lock.unlock();
   }
 }
 
 void OrderDispatcher::outgoingOrdersLoop() {
   while (working) {
-    Order *currentOrder;
+    std::unique_lock<std::mutex> lock(orders_mutex);
+
+    if (!this->working) {
+      lock.unlock();
+      return;
+    }
+
+    // dummy mutex and lock for waiting
+    std::mutex m;
+    std::unique_lock<std::mutex> l(m);
+    // if power is off, wait until it turns on
+    factory->power_on.wait(l, [this] { return factory->getPowerAvailable(); });
 
     if (!orders.empty()) {
-
       for (int i = 0; i < orders.size(); i++) {
-        if (this->orders[i].readyToSend()) {
-          this->orders[i].finalize();
+        if (this->orders[i]->readyToSend()) {
+          this->orders[i]->finalize();
+          delete this->orders[i];
           this->orders.erase(orders.begin() + i);
+          finished_orders += 1;
           break;
         }
       }
     }
+
+    lock.unlock();
   }
 }
 
@@ -113,6 +159,17 @@ void OrderDispatcher::handleFinishedGears() {
 
       return false;
     });
+
+    if (!this->working) {
+      lock.unlock();
+      return;
+    }
+
+    // dummy mutex and lock for waiting
+    std::mutex m;
+    std::unique_lock<std::mutex> l(m);
+    // if power is off, wait until it turns on
+    factory->power_on.wait(l, [this] { return factory->getPowerAvailable(); });
 
     for (auto machine : machines) {
       if (machine->finished()) {
@@ -133,18 +190,20 @@ void OrderDispatcher::handleFinishedGears() {
   }
 }
 
-void OrderDispatcher::addOrder(Order order) {
+void OrderDispatcher::addOrder(Order *order) {
   std::unique_lock<std::mutex> lock(orders_mutex);
   this->orders.push_back(order);
   lock.unlock();
 
-  Logger::log(this->id,
-              "new order with ID " + std::to_string(order.getID()) + " added.");
+  Logger::log(this->id, "new order with ID " + std::to_string(order->getID()) +
+                            " added.");
 }
 
-std::mutex &OrderDispatcher::getOrderMutex() { return this->orders_mutex; }
+// std::mutex &OrderDispatcher::getOrderMutex() { return this->orders_mutex; }
 
-int OrderDispatcher::getQueueLength() {
-  std::unique_lock<std::mutex> lock(orders_mutex);
+int OrderDispatcher::getQueueLength() const {
+  // std::unique_lock<std::mutex> lock(orders_mutex);
   return this->orders.size();
 }
+
+int OrderDispatcher::getFinishedOrders() const { return finished_orders; }

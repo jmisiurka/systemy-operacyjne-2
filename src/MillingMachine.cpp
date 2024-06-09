@@ -26,6 +26,10 @@ bool MillingMachine::finished() const {
 
 bool MillingMachine::empty() const { return this->gear == nullptr; }
 
+bool MillingMachine::busy() const {
+  return !empty() && !finished();
+}
+
 void MillingMachine::startMilling(Gear *gear) {
   if (gear != nullptr) {
     this->gear = gear;
@@ -42,14 +46,14 @@ void MillingMachine::mill() {
   std::random_device rd;
   std::mt19937 gen(rd());
 
-  std::uniform_int_distribution<> dis(5000, 10000);
+  std::uniform_int_distribution<> dis(7500, 10000);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(dis(gen)));
 
+  gear->setState(MILLED);
+
   factory->finished_machines.notify_one();
   Logger::log(this->id, "finished milling.");
-
-  gear->setState(MILLED);
 }
 
 Gear *MillingMachine::removeGear() {

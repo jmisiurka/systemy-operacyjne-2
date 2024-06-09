@@ -2,7 +2,7 @@
 #include "Gear.h"
 #include "Logger.h"
 #include <mutex>
-#include <queue>
+#include <ncurses.h>
 #include <string>
 #include <vector>
 
@@ -11,11 +11,11 @@ int Order::count = 0;
 Order::Order() {
   this->ID = Order::count;
   Order::count++;
-  this->ordered_gears = std::queue<Gear *>();
+  this->ordered_gears = std::vector<Gear *>();
   this->started_gears = std::vector<Gear *>();
 }
 
-Order::Order(std::queue<Gear *> ordered_gears) {
+Order::Order(std::vector<Gear *> ordered_gears) {
   this->ID = Order::count;
   Order::count++;
   this->ordered_gears = ordered_gears;
@@ -23,9 +23,9 @@ Order::Order(std::queue<Gear *> ordered_gears) {
 }
 
 Order::Order(const Order &order) {
-  this->ID = order.ID;
-  this->ordered_gears = order.ordered_gears;
-  this->started_gears = order.started_gears;
+  this->ID = std::move(order.ID);
+  this->ordered_gears = std::move(order.ordered_gears);
+  this->started_gears = std::move(order.started_gears);
 }
 
 Order &Order::operator=(const Order &&order) {
@@ -35,24 +35,12 @@ Order &Order::operator=(const Order &&order) {
   return *this;
 }
 
-// Order::~Order() {
-//   while (!ordered_gears.empty()) {
-//     auto gear = ordered_gears.back();
-//     delete gear;
-//     ordered_gears.pop();
-//   }
-
-//   for (auto gear : started_gears) {
-//     delete gear;
-//   }
-// }
-
-void Order::pushGear(Gear *gear) { this->ordered_gears.push(gear); }
+void Order::pushGear(Gear *gear) { this->ordered_gears.push_back(gear); }
 
 Gear *Order::popGear() {
   std::unique_lock<std::mutex> ordered_lock(ordered_gears_mutex);
-  Gear *gear = ordered_gears.front();
-  this->ordered_gears.pop();
+  Gear *gear = ordered_gears.back();
+  this->ordered_gears.pop_back();
   ordered_lock.unlock();
 
   std::unique_lock<std::mutex> started_lock(started_gears_mutex);
@@ -87,7 +75,25 @@ bool Order::readyToSend() {
   return true;
 }
 
-int Order::getID() { return ID; }
+int Order::getID() const { return ID; }
+
+int Order::getTotalOrderSize() const {
+  return started_gears.size() + ordered_gears.size();
+}
+
+int Order::getFinishedGearsAmount() {
+  int finished = 0;
+  std::unique_lock<std::mutex> lock(started_gears_mutex);
+  for (auto gear : started_gears)
+  {
+    if (gear->getState() == GearState::PACKED)
+    {
+      finished++;
+    }
+  }
+
+  return finished;
+}
 
 void Order::finalize() {
   for (auto gear : started_gears) {

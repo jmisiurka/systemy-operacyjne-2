@@ -9,7 +9,8 @@
 class Factory;
 
 class OrderDispatcher {
-  std::vector<Order> orders;
+  std::vector<Order *> orders;
+  int finished_orders = 0;
   static const std::string id;
   bool working;
 
@@ -25,14 +26,18 @@ class OrderDispatcher {
   void startProcess();
   void packGear();
 
+  friend class Display;
+
 public:
   OrderDispatcher(std::vector<Furnace *> &furnaces,
                   std::vector<MillingMachine *> &machines, Factory *factory);
+  ~OrderDispatcher();
 
   void start();
   void stop();
-  void addOrder(Order order);
+  void addOrder(Order *order);
 
-  std::mutex &getOrderMutex();
-  int getQueueLength();
+  // std::mutex &getOrderMutex();
+  int getQueueLength() const;
+  int getFinishedOrders() const;
 };

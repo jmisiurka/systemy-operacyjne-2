@@ -21,6 +21,7 @@ public:
 
   bool finished() const;
   bool empty() const;
+  bool busy() const;
   void startMilling(Gear *gear);
   Gear *removeGear();
 };

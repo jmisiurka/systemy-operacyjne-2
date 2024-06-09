@@ -4,6 +4,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <random>
 #include <thread>
 
 unsigned int RobotA::count = 0;
@@ -19,18 +20,27 @@ RobotA::RobotA(std::vector<GearStack *> stacks, std::vector<Furnace *> furnaces,
 
 std::string RobotA::getId() const { return this->id; }
 
+bool RobotA::isHoldingGear() const { return holding != nullptr; }
+
 void RobotA::workLoop() {
+  std::random_device rd;
+  std::mt19937 gen(rd());
   while (this->working) {
-    while (holding == nullptr) {
-      getGearFromFurnace();
-    }
+    // while (holding == nullptr) {
+    getGearFromFurnace();
+    // }
 
     // transportation time
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::uniform_int_distribution<> dis(1500, 3000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(dis(gen)));
 
-    while (holding != nullptr) {
-      putGearOnStack();
-    }
+    // while (holding != nullptr) {
+    putGearOnStack();
+    // }
+
+    // transportation time
+    std::uniform_int_distribution<> dis1(1500, 3000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(dis(gen)));
   }
 }
 
@@ -47,6 +57,18 @@ void RobotA::getGearFromFurnace() {
 
     return false;
   });
+
+  // check if stop was demanded during waiting for a gear
+  if (!this->working) {
+    lock.unlock();
+    return;
+  }
+
+  // dummy mutex and lock for waiting
+  std::mutex m;
+  std::unique_lock<std::mutex> l(m);
+  // if power is off, wait until it turns on
+  factory->power_on.wait(l, [this] { return factory->getPowerAvailable(); });
 
   // search through furnaces to find a finished one
   for (auto furnace : furnaces) {
@@ -80,6 +102,17 @@ void RobotA::putGearOnStack() {
     return false;
   });
 
+  if (!this->working) {
+    lock.unlock();
+    return;
+  }
+
+  // dummy mutex and lock for waiting
+  std::mutex m;
+  std::unique_lock<std::mutex> l(m);
+  // if power is off, wait until it turns on
+  factory->power_on.wait(l, [this] { return factory->getPowerAvailable(); });
+
   for (auto stack : stacks) {
     if (!stack->full()) {
       stack->push(holding);
@@ -98,12 +131,12 @@ void RobotA::putGearOnStack() {
   }
 }
 
-void RobotA::start() {
+std::thread RobotA::start() {
   if (!this->working) {
     this->working = true;
     std::thread worker(&RobotA::workLoop, this);
     Logger::log(this->id, "work loop started.");
-    worker.detach();
+    return worker;
   }
 }
 

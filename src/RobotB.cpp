@@ -1,8 +1,9 @@
 #include "../include/RobotB.h"
 #include "../include/Factory.h"
 #include "Logger.h"
-#include <thread>
 #include <mutex>
+#include <random>
+#include <thread>
 
 unsigned int RobotB::count = 0;
 
@@ -15,17 +16,36 @@ RobotB::RobotB(std::vector<GearStack *> stacks,
   this->holding = nullptr;
 }
 
-std::string RobotB::getId() { return this->id; }
+std::string RobotB::getId() const { return this->id; }
+
+bool RobotB::isHoldingGear() const { return holding != nullptr; }
 
 void RobotB::workLoop() {
-  while (this->working) {
-    while (holding == nullptr) {
-      getGearFromStack();
-    }
+  std::random_device rd;
+  std::mt19937 gen(rd());
 
-    while (holding != nullptr) {
+  while (this->working) {
+    // while (holding == nullptr) {
+    //   if (!working) {
+    //     return;
+    //   }
+      getGearFromStack();
+    // }
+
+    // transportation time
+    std::uniform_int_distribution<> dis(1500, 3000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(dis(gen)));
+
+    // while (holding != nullptr) {
+    //   if (!working) {
+    //     return;
+    //   }
       putGearIntoMachine();
-    }
+    // }
+
+    // transportation time
+    std::uniform_int_distribution<> dis1(1500, 3000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(dis(gen)));
   }
 }
 
@@ -42,6 +62,17 @@ void RobotB::getGearFromStack() {
 
     return false;
   });
+
+  if (!this->working) {
+    lock.unlock();
+    return;
+  }
+
+  // dummy mutex and lock for waiting
+  std::mutex m;
+  std::unique_lock<std::mutex> l(m);
+  // if power is off, wait until it turns on
+  factory->power_on.wait(l, [this] { return factory->getPowerAvailable(); });
 
   for (auto stack : stacks) {
     if (!stack->empty()) {
@@ -74,6 +105,17 @@ void RobotB::putGearIntoMachine() {
     return false;
   });
 
+  if (!this->working) {
+    lock.unlock();
+    return;
+  }
+
+  // dummy mutex and lock for waiting
+  std::mutex m;
+  std::unique_lock<std::mutex> l(m);
+  // if power is off, wait until it turns on
+  factory->power_on.wait(l, [this] { return factory->getPowerAvailable(); });
+
   // find empty machine and put the gear into it
   for (auto machine : machines) {
     if (machine->empty()) {
@@ -92,12 +134,13 @@ void RobotB::putGearIntoMachine() {
   }
 }
 
-void RobotB::start() {
+std::thread RobotB::start() {
   if (!this->working) {
     this->working = true;
     std::thread worker(&RobotB::workLoop, this);
     Logger::log(this->id, "work loop started.");
-    worker.detach();
+    // worker.detach();
+    return worker;
   }
 }
 

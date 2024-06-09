@@ -8,11 +8,13 @@ GearStack::GearStack() {
   count++;
 }
 
-std::string GearStack::getId() { return this->id; }
+std::string GearStack::getId() const { return this->id; }
 
-bool GearStack::empty() { return this->stack.empty(); }
+int GearStack::getAmount() const { return stack.size(); }
 
-bool GearStack::full() { return this->stack.size() == 5; }
+bool GearStack::empty() const { return this->stack.empty(); }
+
+bool GearStack::full() const { return this->stack.size() == 5; }
 
 Gear *GearStack::pop() {
   Gear *gear = this->stack.top();

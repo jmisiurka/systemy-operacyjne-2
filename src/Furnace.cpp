@@ -53,7 +53,7 @@ void Furnace::cast() {
   std::random_device rd;
   std::mt19937 gen(rd());
 
-  std::uniform_int_distribution<> dis(5000, 10000);
+  std::uniform_int_distribution<> dis(3000, 6000);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(dis(gen)));
   Logger::log(this->id, "finished casting.");
